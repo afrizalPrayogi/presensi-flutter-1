@@ -50,7 +50,7 @@ class Datum {
   });
 
   int id;
-  String userId;
+  dynamic userId; // Mengubah dari String ke dynamic
   String latitude;
   String longitude;
   String tanggal;
@@ -62,7 +62,7 @@ class Datum {
 
   factory Datum.fromJson(Map<String, dynamic> json) => Datum(
         id: json["id"],
-        userId: json["user_id"],
+        userId: json["user_id"].toString(), // Mengonversi ke String jika diperlukan
         latitude: json["latitude"],
         longitude: json["longitude"],
         tanggal: json["tanggal"],
@@ -70,7 +70,7 @@ class Datum {
         pulang: json["pulang"],
         createdAt: DateTime.parse(json["created_at"]),
         updatedAt: DateTime.parse(json["updated_at"]),
-        isHariIni: json["is_hari_ini"],
+        isHariIni: json["is_hari_ini"] is bool ? json["is_hari_ini"] : json["is_hari_ini"] == 1, // Mengatasi tipe data bool dan int
       );
 
   Map<String, dynamic> toJson() => {

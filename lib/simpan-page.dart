@@ -1,16 +1,15 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/src/foundation/key.dart';
-import 'package:flutter/src/widgets/framework.dart';
+import 'package:http/http.dart' as myHttp;
 import 'package:location/location.dart';
+import 'package:presensi/login-page.dart';
+import 'package:presensi/models/auth_service.dart';
 import 'package:presensi/models/save-presensi-response.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
-import 'package:http/http.dart' as myHttp;
 
 class SimpanPage extends StatefulWidget {
-  const SimpanPage({Key? key}) : super(key: key);
+  const SimpanPage({super.key});
 
   @override
   State<SimpanPage> createState() => _SimpanPageState();
@@ -19,6 +18,7 @@ class SimpanPage extends StatefulWidget {
 class _SimpanPageState extends State<SimpanPage> {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   late Future<String> _token;
+  
 
   @override
   void initState() {
@@ -28,17 +28,16 @@ class _SimpanPageState extends State<SimpanPage> {
     });
   }
 
-  Future<LocationData?> _currenctLocation() async {
-    bool serviceEnable;
+  Future<LocationData?> _currentLocation() async {
+    bool serviceEnabled;
     PermissionStatus permissionGranted;
 
-    Location location = new Location();
+    Location location = Location();
 
-    serviceEnable = await location.serviceEnabled();
-
-    if (!serviceEnable) {
-      serviceEnable = await location.requestService();
-      if (!serviceEnable) {
+    serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await location.requestService();
+      if (!serviceEnabled) {
         return null;
       }
     }
@@ -54,52 +53,97 @@ class _SimpanPageState extends State<SimpanPage> {
     return await location.getLocation();
   }
 
-  Future savePresensi(latitude, longitude) async {
-    SavePresensiResponseModel savePresensiResponseModel;
+ Future<void> savePresensi(double? latitude, double? longitude) async {
+  if (latitude == null || longitude == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Lokasi tidak valid')),
+    );
+    return;
+  }
+
+  try {
+    String token = await _token;
     Map<String, String> body = {
       "latitude": latitude.toString(),
       "longitude": longitude.toString()
     };
 
-    Map<String, String> headers = {'Authorization': 'Bearer ' + await _token};
+    Map<String, String> headers = {'Authorization': 'Bearer $token'};
 
     var response = await myHttp.post(
-        Uri.parse("https://punyawa.com/presensi/public/api/save-presensi"),
-        body: body,
-        headers: headers);
+      Uri.parse("http://127.0.0.1:8000/api/save-presensi"),
+      body: body,
+      headers: headers,
+    );
 
-    savePresensiResponseModel =
-        SavePresensiResponseModel.fromJson(json.decode(response.body));
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
 
-    if (savePresensiResponseModel.success) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Sukses simpan Presensi')));
-      Navigator.pop(context);
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(response.body);
+      if (jsonResponse is Map<String, dynamic>) {
+        SavePresensiResponseModel savePresensiResponseModel =
+            SavePresensiResponseModel.fromJson(jsonResponse);
+
+        if (savePresensiResponseModel.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Sukses simpan Presensi')));
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Anda sudah melakukan Absen')));
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Respon tidak valid dari server')));
+      }
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal simpan Presensi')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal terhubung ke server')));
     }
+  } catch (e) {
+    print('Error: $e');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Terjadi kesalahan')));
+  }
+}
+
+
+  void _logout() async {
+    await AuthService().logout();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) =>
+            const LoginPage(), // Ganti dengan halaman login Anda
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Presensi"),
+        title: const Text("Presensi"),
       ),
       body: FutureBuilder<LocationData?>(
-          future: _currenctLocation(),
-          builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-            if (snapshot.hasData) {
-              final LocationData currentLocation = snapshot.data;
-              print("KODING : " +
-                  currentLocation.latitude.toString() +
-                  " | " +
-                  currentLocation.longitude.toString());
-              return SafeArea(
-                  child: Column(
+        future: _currentLocation(),
+        builder: (BuildContext context, AsyncSnapshot<LocationData?> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.hasError) {
+            return const Center(
+              child: Text('Error retrieving location'),
+            );
+          } else if (snapshot.hasData && snapshot.data != null) {
+            final LocationData currentLocation = snapshot.data!;
+            print(
+                "Lokasi : ${currentLocation.latitude} | ${currentLocation.longitude}");
+            return SafeArea(
+              child: Column(
                 children: [
-                  Container(
+                  SizedBox(
                     height: 300,
                     child: SfMaps(
                       layers: [
@@ -115,7 +159,7 @@ class _SimpanPageState extends State<SimpanPage> {
                             return MapMarker(
                               latitude: currentLocation.latitude!,
                               longitude: currentLocation.longitude!,
-                              child: Icon(
+                              child: const Icon(
                                 Icons.location_on,
                                 color: Colors.red,
                               ),
@@ -125,23 +169,32 @@ class _SimpanPageState extends State<SimpanPage> {
                       ],
                     ),
                   ),
-                  SizedBox(
+                  const SizedBox(
                     height: 20,
                   ),
                   ElevatedButton(
+                    onPressed: () {
+                      savePresensi(
+                          currentLocation.latitude, currentLocation.longitude);
+                    },
+                    child: const Text("Simpan Presensi"),
+                  ),
+                  const SizedBox(height: 100),
+                  ElevatedButton(
                       onPressed: () {
-                        savePresensi(currentLocation.latitude,
-                            currentLocation.longitude);
+                        _logout();
                       },
-                      child: Text("Simpan Presensi"))
+                      child: const Text('logout'))
                 ],
-              ));
-            } else {
-              return Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-          }),
+              ),
+            );
+          } else {
+            return const Center(
+              child: Text('Tidak dapat menemukan lokasi'),
+            );
+          }
+        },
+      ),
     );
   }
 }
