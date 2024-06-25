@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Terjadi kesalahan: $error")),
+        SnackBar(content: Text("Terjadi kesalahan sesuatu: $error")),
       );
     }
   }
