@@ -1,15 +1,15 @@
 buildscript {
-    ext.kotlin_version = '1.6.10'
+    ext.kotlin_version = '2.0.0' // Update this line with the latest Kotlin version
     repositories {
         google()
-        mavenCentral()
+        jcenter()
     }
-
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.android.tools.build:gradle:4.2.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" // Ensure this matches the latest Kotlin version
     }
 }
+
 
 allprojects {
     repositories {

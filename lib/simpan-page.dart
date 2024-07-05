@@ -7,6 +7,7 @@ import 'package:presensi/models/auth_service.dart';
 import 'package:presensi/models/save-presensi-response.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
+import 'package:presensi/report-page.dart';
 
 class SimpanPage extends StatefulWidget {
   const SimpanPage({super.key});
@@ -26,6 +27,15 @@ class _SimpanPageState extends State<SimpanPage> {
     _token = _prefs.then((SharedPreferences prefs) {
       return prefs.getString("token") ?? "";
     });
+  }
+
+
+  void _navigateToReportPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ReportPage(),
+      ),
+    );
   }
 
   Future<LocationData?> _currentLocation() async {
@@ -178,6 +188,11 @@ class _SimpanPageState extends State<SimpanPage> {
                           currentLocation.latitude, currentLocation.longitude);
                     },
                     child: const Text("Simpan Presensi"),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _navigateToReportPage,
+                    child: const Text("Buat Laporan"),
                   ),
                   const SizedBox(height: 100),
                   ElevatedButton(
